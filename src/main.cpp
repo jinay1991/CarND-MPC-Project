@@ -128,29 +128,11 @@ int main()
           }
 
           auto coeffs = polyfit(ptsx_transformed, ptsy_transformed, 3);
-
-          // actuator delay in ms
-          const int actuator_delay = 100;
-
-          // delay in sec
-          const double delay = actuator_delay / 1000.0;
-
-          // initial state
-          const double x0 = 0;
-          const double y0 = 0;
-          const double psi0 = 0;
-          const double cte0 = polyeval(coeffs, 0);
-          const double epsi0 = -atan(coeffs[1]);
-
-          double x_delay = x0 + (v * cos(psi0) * delay);
-          double y_delay = y0 + (v * sin(psi0) * delay);
-          double psi_delay = psi0 - ((v / mpc.Lf) * delay * delta);
-          double v_delay = v + a * delay;
-          double cte_delay = cte0 + (v * sin(epsi0) * delay);
-          // double epsi_delay = epsi0 - ((v / mpc.Lf) * delay * atan(coeffs[1]));
+          const double cte = polyeval(coeffs, 0);
+          const double epsi = -atan(coeffs[1]);
 
           Eigen::VectorXd state(6);
-          state << 0, 0, 0, v, cte0, epsi0;
+          state << 0, 0, 0, v, cte, epsi;
 
           // Find MPC Solution
           auto vars = mpc.Solve(state, coeffs);
