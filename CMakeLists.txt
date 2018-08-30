@@ -11,8 +11,8 @@ set(CMAKE_CXX_FLAGS "${CXX_FLAGS}")
 
 set(sources src/MPC.cpp src/main.cpp)
 
-include_directories(/usr/local/include /usr/local/opt/mumps/libexec/include)
-link_directories(/usr/local/lib /usr/local/opt/mumps/libexec/lib)
+include_directories(/usr/local/include)
+link_directories(/usr/local/lib)
 include_directories(src/Eigen-3.3)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
