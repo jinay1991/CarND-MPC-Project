@@ -139,7 +139,7 @@ int main()
           const double x0 = 0;
           const double y0 = 0;
           const double psi0 = 0;
-          const double cte0 = coeffs[0];
+          const double cte0 = polyeval(coeffs, 0);
           const double epsi0 = -atan(coeffs[1]);
 
           double x_delay = x0 + (v * cos(psi0) * delay);
@@ -147,10 +147,10 @@ int main()
           double psi_delay = psi0 - ((v / mpc.Lf) * delay * delta);
           double v_delay = v + a * delay;
           double cte_delay = cte0 + (v * sin(epsi0) * delay);
-          double epsi_delay = epsi0 - ((v / mpc.Lf) * delay * atan(coeffs[1]));
+          // double epsi_delay = epsi0 - ((v / mpc.Lf) * delay * atan(coeffs[1]));
 
           Eigen::VectorXd state(6);
-          state << x_delay, y_delay, psi_delay, v_delay, cte_delay, epsi_delay;
+          state << 0, 0, 0, v, cte0, epsi0;
 
           // Find MPC Solution
           auto vars = mpc.Solve(state, coeffs);
@@ -191,13 +191,10 @@ int main()
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
-          double poly_inc = 2.5;
-          int num_points = 25;
-          for (int i = 0; i < num_points; i++)
+          for (int i = 0; i < 100; i++)
           {
-            double x = poly_inc * i;
-            next_x_vals.push_back(x);
-            next_y_vals.push_back(polyeval(coeffs, x));
+            next_x_vals.push_back(i);
+            next_y_vals.push_back(polyeval(coeffs, i));
           }
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;

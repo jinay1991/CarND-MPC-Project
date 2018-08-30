@@ -7,7 +7,7 @@ using CppAD::AD;
 
 // TODO: Set the timestep length and duration
 size_t N = 10;
-double dt = 0.1;
+double dt = 0.10;
 
 // This value assumes the model presented in the classroom is used.
 //
@@ -21,10 +21,7 @@ double dt = 0.1;
 // This is the length from front to CoG that has a similar radius.
 const double Lf = 2.67;
 
-const double ref_cte = 0;
-const double ref_epsi = 0;
-const double ref_v = 100;
-
+double ref_v = 70;
 const size_t x_start = 0;
 const size_t y_start = x_start + N;
 const size_t psi_start = y_start + N;
@@ -53,24 +50,23 @@ public:
     // The part of the cost based on the reference state.
     for (int i = 0; i < N; i++)
     {
-      fg[0] += 1000 * CppAD::pow(vars[cte_start + i] - ref_cte, 2);
-      fg[0] += 1000 * CppAD::pow(vars[epsi_start + i] - ref_epsi, 2);
+      fg[0] += 3000 * CppAD::pow(vars[cte_start + i], 2);
+      fg[0] += 3000 * CppAD::pow(vars[epsi_start + i], 2);
       fg[0] += CppAD::pow(vars[v_start + i] - ref_v, 2);
     }
 
-    // Minimize the use of actuators.
     for (int i = 0; i < N - 1; i++)
     {
-      fg[0] += 50 * CppAD::pow(vars[delta_start + i], 2);
-      fg[0] += 50 * CppAD::pow(vars[a_start + i], 2);
+      fg[0] += 5 * CppAD::pow(vars[delta_start + i], 2);
+      fg[0] += 5 * CppAD::pow(vars[a_start + i], 2);
+      // try adding penalty for speed + steer
+      fg[0] += 700 * CppAD::pow(vars[delta_start + i] * vars[v_start + i], 2);
     }
 
-    // Minimize the value gap between sequential actuations.
-    // (how smooth the actuations are)
     for (int i = 0; i < N - 2; i++)
     {
-      fg[0] += 250000 * CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
-      fg[0] += 5000 * CppAD::pow(vars[a_start + i + 1] - vars[a_start + i], 2);
+      fg[0] += 200 * CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
+      fg[0] += 10 * CppAD::pow(vars[a_start + i + 1] - vars[a_start + i], 2);
     }
 
     // Initial constraints.
@@ -163,6 +159,13 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs)
 
   Dvector vars_lowerbound(n_vars);
   Dvector vars_upperbound(n_vars);
+
+  vars[x_start] = x;
+  vars[y_start] = y;
+  vars[psi_start] = psi;
+  vars[v_start] = v;
+  vars[cte_start] = cte;
+  vars[epsi_start] = epsi;
   // TODO: Set lower and upper limits for variables.
   // Set all non-actuators upper and lower limits
   // to the max negative and positive values.
@@ -176,8 +179,8 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs)
   // degrees (values in radians).
   for (int i = delta_start; i < a_start; i++)
   {
-    vars_lowerbound[i] = -0.436332 * Lf;
-    vars_upperbound[i] = 0.43632 * Lf;
+    vars_lowerbound[i] = -0.436332;
+    vars_upperbound[i] = 0.43632;
   }
 
   // Actuator limits.
