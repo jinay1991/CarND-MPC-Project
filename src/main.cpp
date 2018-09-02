@@ -129,10 +129,19 @@ int main()
 
           auto coeffs = polyfit(ptsx_transformed, ptsy_transformed, 3);
           const double cte = polyeval(coeffs, 0);
-          const double epsi = -atan(coeffs[1]);
+          const double epsi = psi - atan(coeffs[1]);
+
+          double delay = 100;
+          double latency_dt = 1.0 / delay;
+          double x1 = v * cos(0) * latency_dt;
+          double y1 = v * sin(0) * latency_dt;
+          double psi1 = - (v / mpc.Lf) * delta * latency_dt;
+          double v1 = v + (a * latency_dt);
+          double cte1 = cte + (v * sin(epsi) * latency_dt);
+          double epsi1 = epsi - ((v / mpc.Lf) * delta * latency_dt);
 
           Eigen::VectorXd state(6);
-          state << 0, 0, 0, v, cte, epsi;
+          state << x1, y1, psi1, v1, cte1, epsi1;
 
           // Find MPC Solution
           auto vars = mpc.Solve(state, coeffs);

@@ -57,6 +57,7 @@ public:
       fg[0] += CppAD::pow(vars[v_start + i] - ref_v, 2);
     }
 
+    // Minimize the use of actuators
     for (int i = 0; i < N - 1; i++)
     {
       fg[0] += 5 * CppAD::pow(vars[delta_start + i], 2);
@@ -65,6 +66,7 @@ public:
       fg[0] += 700 * CppAD::pow(vars[delta_start + i] * vars[v_start + i], 2);
     }
 
+    // Minimize the value gap between sequential actuations
     for (int i = 0; i < N - 2; i++)
     {
       fg[0] += 200 * CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
@@ -91,18 +93,18 @@ public:
     // The rest of the constraints
     for (int t = 1; t < N; t++)
     {
-      AD<double> x1 = vars[x_start + t];
       AD<double> x0 = vars[x_start + t - 1];
-      AD<double> y1 = vars[y_start + t];
       AD<double> y0 = vars[y_start + t - 1];
-      AD<double> psi1 = vars[psi_start + t];
       AD<double> psi0 = vars[psi_start + t - 1];
-      AD<double> v1 = vars[v_start + t];
       AD<double> v0 = vars[v_start + t - 1];
-      AD<double> cte1 = vars[cte_start + t];
       AD<double> cte0 = vars[cte_start + t - 1];
-      AD<double> epsi1 = vars[epsi_start + t];
       AD<double> epsi0 = vars[epsi_start + t - 1];
+      AD<double> x1 = vars[x_start + t];
+      AD<double> y1 = vars[y_start + t];
+      AD<double> psi1 = vars[psi_start + t];
+      AD<double> v1 = vars[v_start + t];
+      AD<double> cte1 = vars[cte_start + t];
+      AD<double> epsi1 = vars[epsi_start + t];
       AD<double> a = vars[a_start + t - 1];
       AD<double> delta = vars[delta_start + t - 1];
       if (t > 1)
@@ -140,7 +142,6 @@ MPC::~MPC() {}
 vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs)
 {
   bool ok = true;
-  size_t i;
   typedef CPPAD_TESTVECTOR(double) Dvector;
 
   const double x = state[0];

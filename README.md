@@ -38,38 +38,6 @@ Self-Driving Car Engineer Nanodegree Program
 3. Compile: `cmake .. && make`
 4. Run it: `./mpc`.
 
-## Tips
-
-1. It's recommended to test the MPC on basic examples to see if your implementation behaves as desired. One possible example
-is the vehicle starting offset of a straight line (reference). If the MPC implementation is correct, after some number of timesteps
-(not too many) it should find and track the reference line.
-2. The `lake_track_waypoints.csv` file has the waypoints of the lake track. You could use this to fit polynomials and points and see of how well your model tracks curve. NOTE: This file might be not completely in sync with the simulator so your solution should NOT depend on it.
-3. For visualization this C++ [matplotlib wrapper](https://github.com/lava/matplotlib-cpp) could be helpful.)
-4.  Tips for setting up your environment are available [here](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/0949fca6-b379-42af-a919-ee50aa304e6a/lessons/f758c44c-5e40-4e01-93b5-1a82aa4e044f/concepts/23d376c7-0195-4276-bdf0-e02f1f3c665d)
-5. **VM Latency:** Some students have reported differences in behavior using VM's ostensibly a result of latency.  Please let us know if issues arise as a result of a VM environment.
-
-## Editor Settings
-
-We've purposefully kept editor configuration files out of this repo in order to
-keep it as simple and environment agnostic as possible. However, we recommend
-using the following settings:
-
-* indent using spaces
-* set tab width to 2 spaces (keeps the matrices in source code aligned)
-
-## Code Style
-
-Please (do your best to) stick to [Google's C++ style guide](https://google.github.io/styleguide/cppguide.html).
-
-## Project Instructions and Rubric
-
-Note: regardless of the changes you make, your project must be buildable using
-cmake and make!
-
-More information is only accessible by people who are already enrolled in Term 2
-of CarND. If you are enrolled, see [the project page](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/f1820894-8322-4bb3-81aa-b26b3c6dcbaf/lessons/b1ff3be0-c904-438e-aad3-2b5379f0e0c3/concepts/1a2255a0-e23c-44cf-8d41-39b8a3c8264a)
-for instructions and the project rubric.
-
 ---
 
 ## [Rubric](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/f1820894-8322-4bb3-81aa-b26b3c6dcbaf/lessons/b1ff3be0-c904-438e-aad3-2b5379f0e0c3/concepts/1a2255a0-e23c-44cf-8d41-39b8a3c8264a) Points
@@ -84,21 +52,73 @@ for instructions and the project rubric.
 
 1. The Model
 
-   The kinematic model includes the vehicle's x and y coordinates, orientation angle (psi), and velocity, as well as the cross-track error and psi error (epsi). Actuator outputs are acceleration and delta (steering angle). The model combines the state and actuations from the previous timestep to calculate the state for the current timestep based on the equations below:
+   The Model used in this project is Kinematic Bicycle Model. It ignores dynamic effects such as inertia, friction and torque. This model is non-linear model as it takes changes of direction of drive. Model includes vehicle's position (`x, y`), orientation angle (`psi`), velocity (`v`), cross-track error (`cte`) and psi error (`epsi`), which can be representaed as equations as given below:
 
    ![Model](examples/model.png)
 
+   As per the equations above I have computed predicted positions (`x, y`), orientation angle (`psi`), velocity (`v`), cross track error (`cte`) and psi error (epsi) for `t + 1` timestamp.
+
 2. Timestep Length and Elapsed Duration (N & dt)
 
-   The values chosen for N and dt are 10 and 0.1, respectively. These values mean that the optimizer is considering a one-second duration in which to determine a corrective trajectory. Adjusting either N or dt (even by small amounts) often produced erratic behavior.
+   The values chosen for N and dt are:
+
+   ```
+   N = 10
+   dt = 0.1
+   ```
+
+   As per the trial and error I found that with Smaller value of N, car speed is not compromised. For example, if we were to set N to 100, the simulation would run much slower. This is because the solver would have to optimize 4 times as many control inputs.
+
+   I have choosen values for `N` and `dt` based on multiple trial and error attemps. Based on that I found best results achived with `N=10` and `dt=0.1`, giving time horizon of `1 sec`. Values of `dt` smaller than `0.1` did not work, for instance `N=20` and `dt=0.05` resulted in crash of vehicle in the river.
+
+   Implementation at `MPC.cpp` line 9-10
 
 3. Polynomial Fitting and MPC Preprocessing
 
-   The waypoints are preprocessed by transforming them to the vehicle's perspective (see main.cpp lines 108-113). This simplifies the process to fit a polynomial to the waypoints because the vehicle's x and y coordinates are now at the origin (0, 0) and the orientation angle is also zero.
+   Computations performed in vehicle coorinate system and cooridinates of the waypoints in vehicle coordinates are obtained by following equations:
+   ```
+   X = dX * cos(-psi) - dY * sin (-psi)
+   Y = dX * sin(-psi) + dY * con (-psi)
+   ```
+   where, `dX = (psix[i] - x)`, `dY = (psiy[i] - y)` and `(X, Y)` = coordinates in Vehicle Coordinate System.
+
+   Note that initial position of the car and heading direction are always assumed to be Zero in this frame, thus state of the Car in Vehicle Coordinate system can be represented as:
+
+   ```
+   auto coeffs = polyfit(ptsx_transformed, ptsy_transformed, 3);
+   const double cte = polyeval(coeffs, 0);
+   const double epsi = psi - atan(coeffs[1]);
+
+   Eigen::VectorXd state(6);
+   state << 0, 0, 0, v, cte, epsi;
+   ```
+
+   Although in order to take system latency into considerations, I had to compute state values with kinetic model equations. With updated value, I have initialized state.
+
+   ```
+   double latency = 100;
+   double latency_dt = 1.0 / latency;
+   double x1 = v * cos(0) * latency_dt;
+   double y1 = v * sin(0) * latency_dt;
+   double psi1 = - (v / mpc.Lf) * delta * latency_dt;
+   double v1 = v + (a * latency_dt);
+   double cte1 = cte + (v * sin(epsi) * latency_dt);
+   double epsi1 = epsi - ((v / mpc.Lf) * delta *  latency_dt);
+
+   Eigen::VectorXd state(6);
+   state << x1, y1, psi1, v1, cte1, epsi1;
+   ```
+
+   This is implmented in `main.cpp` line 126-135.
 
 4. Model Predictive Control with Latency
 
-   The approach to dealing with latency was twofold (not counting simply limiting the speed): the original kinematic equations depend upon the actuations from the previous timestep, but with a delay of 100ms (which happens to be the timestep interval) the actuations are applied another timestep later, so the equations have been altered to account for this (MPC.cpp lines 104-107). Also, in addition to the cost functions suggested in the lessons (punishing CTE, epsi, difference between velocity and a reference velocity, delta, acceleration, change in delta, and change in acceleration) an additional cost penalizing the combination of velocity and delta (MPC.cpp line 63) was included and results in much more controlled cornering.
+   The student implements Model Predictive Control that handles a 100 millisecond latency. Student provides details on how they deal with latency.
+
+   I have choosen values for `N` and `dt` as `10` and `0.1`, respectively. Based on that I observed that `dt` should be in sync with system latency, which is `100ms`. Also with experiments, I get to know that time horizon `> 1 sec` did not improve the results and sometimes crashes the car.
+
+   Implementation at `main.cpp` line 134-141.
+
 
 ### Simulation
 
