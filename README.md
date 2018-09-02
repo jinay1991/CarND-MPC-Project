@@ -69,7 +69,7 @@ Self-Driving Car Engineer Nanodegree Program
 
    As per the trial and error I found that with Smaller value of N, car speed is not compromised. For example, if we were to set N to 100, the simulation would run much slower. This is because the solver would have to optimize 4 times as many control inputs.
 
-   I have choosen values for `N` and `dt` based on multiple trial and error attemps. Based on that I found best results achived with `N=10` and `dt=0.1`, giving time horizon of `1 sec`. Values of `dt` smaller than `0.1` did not work, for instance `N=20` and `dt=0.05` resulted in crash of vehicle in the river.
+   I have choosen values for `N` and `dt` based on multiple trial and error attemps. Based on that I found best results achived with `N=10` and `dt=0.1`, giving time horizon of `1 sec`. Values of `dt` smaller than `0.1` did not work, for instance `N=20` and `dt=0.05` resulted in crash of vehicle in the river. I have choosen values for `N` and `dt` as `10` and `0.1`, respectively. Based on that I observed that `dt` should be in sync with system latency, which is `100ms`. Also with experiments, I get to know that time horizon `> 1 sec` did not improve the results and sometimes crashes the car.
 
    Implementation at `MPC.cpp` line 9-10
 
@@ -113,9 +113,21 @@ Self-Driving Car Engineer Nanodegree Program
 
 4. Model Predictive Control with Latency
 
-   The student implements Model Predictive Control that handles a 100 millisecond latency. Student provides details on how they deal with latency.
+   Values for `N` and `dt` was chosen to accomodate system latency of `100ms`. Also state values are updated for the system latency by computing new values from kinetic model equations as given below:
 
-   I have choosen values for `N` and `dt` as `10` and `0.1`, respectively. Based on that I observed that `dt` should be in sync with system latency, which is `100ms`. Also with experiments, I get to know that time horizon `> 1 sec` did not improve the results and sometimes crashes the car.
+   ```
+   double latency = 100;
+   double latency_dt = 1.0 / latency;
+   double x1 = v * cos(0) * latency_dt;
+   double y1 = v * sin(0) * latency_dt;
+   double psi1 = - (v / mpc.Lf) * delta * latency_dt;
+   double v1 = v + (a * latency_dt);
+   double cte1 = cte + (v * sin(epsi) * latency_dt);
+   double epsi1 = epsi - ((v / mpc.Lf) * delta *  latency_dt);
+
+   Eigen::VectorXd state(6);
+   state << x1, y1, psi1, v1, cte1, epsi1;
+   ```
 
    Implementation at `main.cpp` line 134-141.
 
